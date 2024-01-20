@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+
+  database:
+    image: mysql:8.3
+    restart: always
+    environment:
+      MYSQL_USER: test-user
+      MYSQL_PASSWORD: test-password
+      MYSQL_DATABASE: test
+      MYSQL_RANDOM_ROOT_PASSWORD: yes
+      TZ: UTC
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - data:/var/lib/mysql
+
+  db-migration:
+    build:
+      context: .
+      dockerfile: Dockerfile.db-migration
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      GOOSE_DBSTRING: "test-user:test-password@tcp(database:3306)/test?parseTime=true"
+
+volumes:
+  data:

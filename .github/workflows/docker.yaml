@@ -1,0 +1,31 @@
+name: Docker
+on: [push]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: vars
+        run: |
+          echo "VERSION=$(date --rfc-3339=date)_${{ github.ref_name }}_$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        run: |
+          docker build . -t ${{ env.REGISTRY }}/${{ github.repository }}:${{ steps.vars.outputs.VERSION }} -f ./Dockerfile
+          docker push ${{ env.REGISTRY }}/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}
+          docker build . -t ${{ env.REGISTRY }}/${{ github.repository }}/db-migration:${{ steps.vars.outputs.VERSION }} -f ./Dockerfile.db-migration
+          docker push ${{ env.REGISTRY }}/${{ github.repository }}/db-migration:${{ steps.vars.outputs.VERSION }}
